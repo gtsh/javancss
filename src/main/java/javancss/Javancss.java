@@ -36,7 +36,7 @@ import java.util.logging.Logger;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.OptionBuilder;
+import static org.apache.commons.cli.Option.builder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
@@ -619,19 +619,19 @@ public class Javancss
     public Javancss( String[] args ) throws IOException
     {
         Options options = new Options();
-        options.addOption( OptionBuilder.create( "help" ) );
-        options.addOption( OptionBuilder.create( "version" ) );
-        options.addOption( OptionBuilder.create( "debug" ) );
-        options.addOption( OptionBuilder.withDescription( "Counts the program NCSS (default)." ).create( "ncss" ) );
-        options.addOption( OptionBuilder.withDescription( "Assembles a statistic on package level." ).create( "package" ) );
-        options.addOption( OptionBuilder.withDescription( "Counts the object NCSS." ).create( "object" ) );
-        options.addOption( OptionBuilder.withDescription( "Counts the function NCSS." ).create( "function" ) );
-        options.addOption( OptionBuilder.withDescription( "The same as '-function -object -package'." ).create( "all" ) );
-        options.addOption( OptionBuilder.withDescription( "Opens a GUI to present the '-all' output in tabbed panels." ).create( "gui" ) );
-        options.addOption( OptionBuilder.withDescription( "Output in XML format." ).create( "xml" ) );
-        options.addOption( OptionBuilder.withDescription( "Output file name. By default output goes to standard out." ).create( "out" ) );
-        options.addOption( OptionBuilder.withDescription( "Recurse to subdirs." ).create( "recursive" ) );
-        options.addOption( OptionBuilder.withDescription( "Encoding used while reading source files (default: platform encoding)." ).hasArg().create( "encoding" ) );
+        options.addOption( builder( "help" ).build() );
+        options.addOption( builder( "version" ).build() );
+        options.addOption( builder( "debug" ).build() );
+        options.addOption( builder( "ncss" ).desc( "Counts the program NCSS (default)." ).build() );
+        options.addOption( builder( "package" ).desc( "Assembles a statistic on package level." ).build() );
+        options.addOption( builder( "object" ).desc( "Counts the object NCSS." ).build() );
+        options.addOption( builder( "function" ).desc( "Counts the function NCSS." ).build() );
+        options.addOption( builder( "all" ).desc( "The same as '-function -object -package'." ).build() );
+        options.addOption( builder( "gui" ).desc( "Opens a GUI to present the '-all' output in tabbed panels." ).build() );
+        options.addOption( builder( "xml" ).desc( "Output in XML format." ).build() );
+        options.addOption( builder( "out" ).desc( "Output file name. By default output goes to standard out." ).hasArg().argName("outFile").build() );
+        options.addOption( builder( "recursive" ).desc( "Recurse to subdirs." ).build() );
+        options.addOption( builder( "encoding" ).desc( "Encoding used while reading source files (default: platform encoding)." ).hasArg().argName("encoding").build() );
        
         CommandLine cl;
 
