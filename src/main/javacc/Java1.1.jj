@@ -848,6 +848,8 @@ TOKEN :
 | < RSIGNEDSHIFTASSIGN: ">>=" >
 | < RUNSIGNEDSHIFTASSIGN: ">>>=" >
 | < ELLIPSIS: "..." >
+| < FUNDEF: "->" >            // JDK 8: Lambda Indicator
+
 }
 
 
@@ -2281,11 +2283,10 @@ void Expression() :
     //System.out.println( "Expression start" );
 }
 {
-
   LOOKAHEAD( PrimaryExpression() AssignmentOperator() )
   //{ System.out.println( "Expression" ); }
   Assignment()
-|
+  |
   ConditionalExpression()
 }
 
@@ -2423,6 +2424,9 @@ void UnaryExpressionNotPlusMinus() :
 {}
 {
   ( "~" | "!" ) UnaryExpression()
+|
+  LOOKAHEAD( LambdaPrefix() )
+  LambdaExpression() 
 |
   LOOKAHEAD( CastLookahead() )
   CastExpression()
@@ -3444,3 +3448,32 @@ void MemberSelector():
   "." TypeArguments() <IDENTIFIER>
 }
 
+// JDK 8 Lambda Stuff:
+void LambdaExpression():
+{}
+{
+    LambdaPrefix()
+    (
+      Expression()
+    |
+      Block()
+    )
+}
+
+void LambdaPrefix() :
+{}
+{
+  LambdaParameterDeclaration()
+  <FUNDEF>
+}
+
+void LambdaParameterDeclaration() :
+{}
+{
+  <IDENTIFIER>                                       // Single parameter, no parentheses: a -> ...
+  |
+  LOOKAHEAD(3)
+  <LPAREN> <IDENTIFIER> ("," <IDENTIFIER>)* <RPAREN> // One or more untyped parameters, in parentheses (a, b, ...) ->
+  |
+  FormalParameters()                                 // Typed parameter list: (T a, ...) -> ...
+}

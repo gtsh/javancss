@@ -56,6 +56,7 @@ public class ParseTest extends AbstractTestCase
         checkParse( 158 ); // JAVANCSS-48
         checkParse( 159 ); // default interface methods
         checkParse( 160 ); // method references
+        checkParse( 161 ); // lambda expressions
     }
 
     private void checkParse( int testFile )
