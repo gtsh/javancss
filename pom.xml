@@ -209,9 +209,9 @@
           </configuration>
         </plugin>
         <plugin>
-          <groupId>org.codehaus.mojo</groupId>
-          <artifactId>javacc-maven-plugin</artifactId>
-          <version>2.6</version>
+		  <groupId>org.javacc.plugin</groupId>
+    	  <artifactId>javacc-maven-plugin</artifactId>
+          <version>3.0.3</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -273,8 +273,8 @@
         </executions>
       </plugin>
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>javacc-maven-plugin</artifactId>
+		<groupId>org.javacc.plugin</groupId>
+    	<artifactId>javacc-maven-plugin</artifactId>
         <executions>
           <execution>
             <id>javacc</id>
@@ -286,6 +286,14 @@
             </configuration>
           </execution>
         </executions>
+        <dependencies>
+			<!-- https://mvnrepository.com/artifact/net.java.dev.javacc/javacc -->
+			<dependency>
+    			<groupId>net.java.dev.javacc</groupId>
+    			<artifactId>javacc</artifactId>
+    			<version>7.0.11</version>
+			</dependency>
+        </dependencies>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
