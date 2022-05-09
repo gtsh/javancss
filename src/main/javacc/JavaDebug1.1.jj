@@ -29,6 +29,7 @@ options {
   JAVA_UNICODE_ESCAPE = true;
   STATIC = false;
   DEBUG_PARSER = true;
+  DEBUG_LOOKAHEAD = true;
 }
 
 PARSER_BEGIN(JavaParserDebug)
@@ -41,6 +42,7 @@ import java.util.logging.*;
 import javancss.FunctionMetric;
 import javancss.ObjectMetric;
 import javancss.PackageMetric;
+import static java.lang.System.out;
 
 /**
  * Java source code parser based on a grammar compiled by
@@ -191,6 +193,40 @@ public class JavaParserDebug implements JavaParserInterface
     public String getLastFunction() {
         return _sPackage + _sClass + _sFunction;
     }
+
+    // Debug helper, that auto magically dumps the current token stack in
+    // front of the debug text.
+    void debug(String text) {
+        try {
+            dumpCurrentToken();
+        } catch (Throwable e) {
+            e.printStackTrace(out);
+        }
+        out.print("  -->");
+        out.println(text);
+    }
+
+    void dumpCurrentToken() {
+        Token token = getToken(0);
+        if (token == null || token.image == null) {
+            out.print("^$"); // no token yet
+            return;
+        }
+        for (int i = 0; i < trace_indent; i++) { System.out.print(" "); }
+        out.print("@");
+        out.print(token.beginLine);
+        out.print(":");
+        out.print(token.beginColumn);
+        int pos = 0;
+        while (token != null) {
+            out.print(" ");
+            out.print(pos);
+            out.print(":");
+            out.print(token);
+            token = token.next;
+            pos++;
+        }
+   }
 
    /**
     * Class to hold modifiers.
@@ -878,14 +914,14 @@ void CompilationUnit() :
 
     _bPrivate = true;//false;
 
-	JavaParserTokenManager.nbligne = 1; //Added by REYNAUD Sebastien (LOGICA)
+    JavaParserTokenManager.nbligne = 1; //Added by REYNAUD Sebastien (LOGICA)
 }
 {
         {
                 _sPackage = "";
                 _pPackageMetric = new PackageMetric();      // this object manages the metrics
         }
-  [ LOOKAHEAD( ( Annotation() )* "package" ) PackageDeclaration() ]
+  [ LOOKAHEAD(Annotations() "package") PackageDeclaration() ]
   ( ImportDeclaration() )*
   ( TypeDeclaration()
     //{ System.out.println( "Token: " + getToken( 0 ) ); }
@@ -962,7 +998,7 @@ void PackageDeclaration() :
     int beginColumn = 1;
 }
 {
-    (Annotation())*
+  Annotations()
   "package"
   {
       _anonClassCount = 1;
@@ -1024,7 +1060,7 @@ void TypeDeclaration() :
    int modifiers;
 }
 {
-  LOOKAHEAD( (Annotation())* ( "abstract" | "final" | "public" | "synchronized" | "strictfp" )* "class" )
+  LOOKAHEAD( Annotations() ( "abstract" | "final" | "public" | "synchronized" | "strictfp" )* "class" )
 
 	//(Annotation())*	//Removed by REYNAUD Sebastien (LOGICA)
 
@@ -1081,7 +1117,7 @@ void ClassDeclaration() :
 	{tmpToken = myToken;}
 	)?
 
-	(Annotation())*
+	Annotations()
 	//
 
   ( "abstract"
@@ -1180,12 +1216,12 @@ void UnmodifiedClassDeclaration() :
         int oldFunctions = _functions;
         int oldClasses = _classes;
 
-		//Added by REYNAUD Sebastien (LOGICA)
+	//Added by REYNAUD Sebastien (LOGICA)
 	ObjectMetric metric = new ObjectMetric();
 	if (_classLevel == 0) {
 		metric.firstLine = JavaParserTokenManager.nbligne;
 	}
-		//
+	//
 }
 {
         {
@@ -1195,8 +1231,12 @@ void UnmodifiedClassDeclaration() :
                 _sClass += getToken(2).image;
                 _classLevel ++;
         }
-        Modifiers()
-  "class" Identifier() [TypeParameters()] [ "extends" Name() [TypeArguments()] /*Added by REYNAUD Sebastien (LOGICA)*/ ("." Name() [TypeArguments()] )* /**/ ] [ "implements" NameList() ]
+  Modifiers()
+  "class"
+  Identifier()
+  [ TypeParameters() ]
+  [ ExtendsList(false) ]
+  [ ImplementsList(false) ]
   ClassBody()
         {
                 _ncss++;
@@ -1662,19 +1702,19 @@ void FieldDeclaration() :
 }
 
 void VariableDeclarator() :
-{}
+{debug("VariableDeclarator()");}
 {
   VariableDeclaratorId() [ "=" VariableInitializer() ]
 }
 
 void VariableDeclaratorId() :
-{}
+{debug("VariableDeclaratorId()");}
 {
-        ("enum"|Identifier()) ( "[" "]" { _sName += "[]"; })*
+        ("enum"|Identifier()) ( Annotations() "[" "]" { _sName += "[]"; })*
 }
 
 void VariableInitializer() :
-{}
+{debug("VariableInitializer()");}
 {
   ArrayInitializer()
 |
@@ -1682,7 +1722,7 @@ void VariableInitializer() :
 }
 
 void ArrayInitializer() :
-{}
+{debug("ArrayInitializer()");}
 {
   "{" [ VariableInitializer() ( LOOKAHEAD(2) "," VariableInitializer() )* ] [ "," ] "}"
 }
@@ -2033,6 +2073,7 @@ void ConstructorDeclaration() :
   }
  ]
   [ TypeParameters() ]
+  Annotations()  // Target(ElementType.TYPE_USE), available since JDK 8 (gtsh)
   Identifier()
         {
             if ( tmpToken == null ) {
@@ -2158,7 +2199,7 @@ void ExplicitConstructorInvocation() :
 }
 
 void Initializer() :
-{}
+{ debug("Initializer()"); }
 {
   [ "static" ] Block()
         { _ncss++;       log.finer( "_ncss++" );}
@@ -2167,16 +2208,19 @@ void Initializer() :
 /*
  * Type, name and expression syntax follows.
  */
-
+ 
 void Type() :
-{}
+{ debug("Type()"); }
 {
-   LOOKAHEAD(2) ReferenceType()
- |
+   Annotations() // Target(ElementType.TYPE_USE), available since JDK 8 (gtsh)
+   (
+     LOOKAHEAD(2) ReferenceType()
+   |
    PrimitiveType()
           {
                   _sName = getToken(0).image;
           }
+    )
 }
 /*
 ccl 2008-01-24
@@ -2196,7 +2240,7 @@ ccl 2008-01-24
  */
 
 void FieldTypeLookahead() :
-{}
+{ debug("FieldTypeLookahead()"); }
 {
   ( PrimitiveType()
     | FieldTypeNameLookahead()
@@ -2204,7 +2248,7 @@ void FieldTypeLookahead() :
 }
 
 void PrimitiveType() :
-{}
+{ debug("PrimitiveType()"); }
 {
   "boolean"
 |
@@ -2224,7 +2268,7 @@ void PrimitiveType() :
 }
 
 void ResultType() :
-{}
+{ debug("ResultType()"); }
 {
   "void"
 |
@@ -2236,7 +2280,7 @@ void Name() :
  * A lookahead of 2 is required below since "Name" can be followed
  * by a ".*" when used in the context of an "ImportDeclaration".
  */
-{}
+{ debug("Name()"); }
 {
     ("enum"|Identifier()) //<IDENTIFIER> // no Identifier() because of assert type for field declaration
         {
@@ -2259,7 +2303,7 @@ void FieldTypeNameLookahead() :
  * A lookahead of 2 is required below since "Name" can be followed
  * by a ".*" when used in the context of an "ImportDeclaration".
  */
-{}
+{ debug("FieldTypeNameLookahead()"); }
 {
     <IDENTIFIER> // no Identifier() because of assert type for field declaration
   ( LOOKAHEAD(2) "." Identifier()
@@ -2269,8 +2313,8 @@ void FieldTypeNameLookahead() :
 void NameList() :
 {}
 {
-    Name() [TypeArguments()]
-   ( "," Name() [TypeArguments()]
+    Annotations() Name() [TypeArguments()]
+   ( "," Annotations() Name() [TypeArguments()]
   )*
 }
 
@@ -2586,36 +2630,35 @@ void AllocationExpression() :
 
 }
 {
-  LOOKAHEAD(2)
-  "new" PrimitiveType() ArrayDimsAndInits()
-|
-         "new" Name()
-                        // this is all for anonymous classes
-                        { sName = _sName; }
-  [TypeArguments()]
-      (
+  "new" Annotations()
+  (
+    PrimitiveType() ArrayDimsAndInits()
+  |
+    Name()
+    { sName = _sName; } // preparation for tracking anonymous classes
+    [TypeArguments()]
+    (
       ArrayDimsAndInits()
     |
       Arguments()
-                [
-                 {
-                         if (!_sClass.equals("")) {
-                                 _sClass += ".";
-                         }
-                         /*_sClass += sName;*/
-                         _sClass += sName + "$" + _anonClassCount ;
-
-                         _classLevel ++;
-                 }
-                        ClassBody()
-                        {
-                                _classLevel--;
-                                _functions = oldFunctions;
-                                _classes = oldClasses + 1;
-                                _sClass = sOldClass;
-                        }
-                ]
+      [
+        {  // track actual ananymous class instantiation:
+            if (!_sClass.equals("")) {
+               _sClass += ".";
+            }
+            _sClass += sName + "$" + _anonClassCount ;
+            _classLevel ++;
+        }
+        ClassBody()
+        {
+            _classLevel--;
+            _functions = oldFunctions;
+            _classes = oldClasses + 1;
+            _sClass = sOldClass;
+        }
+      ]
     )
+  )
 }
 
 /*
@@ -2626,9 +2669,9 @@ void ArrayDimsAndInits() :
 {}
 {
   LOOKAHEAD(2)
-  ( LOOKAHEAD(2) "[" Expression() "]" )+ ( LOOKAHEAD(2) "[" "]" )*
+  ( LOOKAHEAD(2) <LBRACKET> Expression() <RBRACKET> )+ ( LOOKAHEAD(2) <LBRACKET> <RBRACKET> )*
 |
-  ( "[" "]" )+ ArrayInitializer()
+  ( <LBRACKET> <RBRACKET> )+ ArrayInitializer()
 }
 
 
@@ -2942,7 +2985,7 @@ void TryWithResources() :
 }
 
 void Identifier() :
-{}
+{debug("Identifier()");}
 {
     <IDENTIFIER>
 |
@@ -2950,9 +2993,15 @@ void Identifier() :
 }
 
 /* Annotation syntax follows. */
-
-void Annotation():
-{}
+void Annotations() :
+{ debug("Annotations()"); }
+{
+  (Annotation())*
+  { debug("Consumed: Annotations()"); }
+}
+  
+void Annotation() :
+{ debug("Annotation()" ); }
 {
    LOOKAHEAD( "@" Name() "(" ( <IDENTIFIER> "=" | ")" ))
    NormalAnnotation()
@@ -2988,13 +3037,13 @@ void MemberValuePairs():
 }
 
 void MemberValuePair():
-{}
+{debug("MemberValuePair()");}
 {
     <IDENTIFIER> "=" MemberValue()
 }
 
 void MemberValue():
-{}
+{debug("MemberValue()");}
 {
    Annotation()
  |
@@ -3004,7 +3053,7 @@ void MemberValue():
 }
 
 void  MemberValueArrayInitializer():
-{}
+{debug("MemberValueArrayInitializer()");}
 {
   "{" [MemberValue()] ( LOOKAHEAD(2) "," MemberValue() )* [ "," ] "}"
 }
@@ -3292,14 +3341,16 @@ void EnumBody():
 }
 
 void TypeParameter():
-{}
+{ debug("TypeParameter()"); }
 {
+    Annotations() // Target(ElementType.TYPE_PARAMETER), available since JDK 8 (gtsh)
     <IDENTIFIER> [ TypeBound() ]
 }
 
 void ClassOrInterfaceType():
-{}
+{ debug("ClassOrInterfaceType()"); }
 {
+  Annotations()  // Target(ElementType.TYPE_USE), available since JDK 8 (gtsh)
   <IDENTIFIER>
 {
                 _sName = getToken(0).image;
@@ -3319,6 +3370,7 @@ void ClassOrInterfaceType():
 
 void ClassOrInterfaceBodyDeclaration(boolean isInterface):
 {
+   debug("ClassOrInterfaceBodyDeclaration("+isInterface+")"); 
    //boolean isNestedInterface = false;
    int modifiers;
 }
@@ -3350,19 +3402,19 @@ void ClassOrInterfaceBodyDeclaration(boolean isInterface):
 }
 
 void EnumConstant():
-{}
+{ debug("EnumConstant()"); }
 {
   Modifiers() <IDENTIFIER> [ Arguments() ] [ ClassOrInterfaceBody(false) ]
 }
 
 void TypeBound():
-{}
+{ debug("TypeBound()"); }
 {
    "extends" ClassOrInterfaceType() ( "&" ClassOrInterfaceType() )*
 }
 
 void TypeArguments():
-{}
+{ debug("TypeArguments()"); }
 {
 //    "<" TypeArgument() ( LOOKAHEAD(2) "," TypeArgument() )* [LOOKAHEAD(3)">"] [LOOKAHEAD(3)">>"] [LOOKAHEAD(3)">>>"] //Removed by REYNAUD Sebastien (LOGICA)
 
@@ -3375,44 +3427,47 @@ void TypeArguments():
 }
 
 void TypeArgument():
-{}
+{ debug("TypeArgument()"); }
 {
-/* ccl 2008-01-24
-    LOOKAHEAD(2)
-    <IDENTIFIER> TypeArguments()
- |*/
-   ReferenceType()
- |
-   "?" [ WildcardBounds() ]
-
+  Annotations()
+  (
+    ReferenceType()
+  |
+    "?" [ WildcardBounds() ]
+  )
 }
 
 void ReferenceType():
-{}
+{ debug("ReferenceType()"); }
 {
 /* ccl 2008-01-23 */
-   PrimitiveType() ( LOOKAHEAD(2) "[" "]" { _sName += "[]"; } )+
+   PrimitiveType() ( LOOKAHEAD(ArrayDeclaration()) ArrayDeclaration() { _sName += "[]"; } )+
   |
-   ( ClassOrInterfaceType() ) ( LOOKAHEAD(2) "[" "]" { _sName += "[]"; } )*
+   ( ClassOrInterfaceType() ) ( LOOKAHEAD(ArrayDeclaration()) ArrayDeclaration() { _sName += "[]"; } )*
+}
+
+void ArrayDeclaration():
+{ debug("ArrayDeclaration()"); }
+{
+  Annotations() <LBRACKET> <RBRACKET>
 }
 
 void WildcardBounds():
-{}
+{ debug("WildcardBounds()"); }
 {
-   "extends" ReferenceType()
- |
-   "super" ReferenceType()
+   ( "super" | "extends" )
+   ClassOrInterfaceType()
 }
 
 void FieldDeclaration15(int modifiers):
-{}
+{ debug("FieldDeclaration15(" + modifiers + ")"); }
 {
   // Modifiers are already matched in the caller
   Type() VariableDeclarator() ( "," VariableDeclarator() )* ";"
 }
 
 void MethodDeclaration15(int modifiers):
-{}
+{ debug("MethodDeclaration15(" + modifiers + ")"); }
 {
     MethodDeclaration()
     /*
@@ -3425,25 +3480,26 @@ void MethodDeclaration15(int modifiers):
 }
 
 void MethodDeclarator15():
-{}
+{ debug("MethodDeclaration15()"); }
 {
   <IDENTIFIER> FormalParameters() ( "[" "]" )*
 }
 
+/*
 void FormalParameters15():
-{}
+{ debug("FormalParameters15()"); }
 {
   "(" [ FormalParameter15() ( "," FormalParameter15() )* ] ")"
 }
 
 void FormalParameter15():
-{}
+{ debug("FormalParameter15()"); }
 {
   Modifiers() Type() [ "..." ] VariableDeclaratorId()
 }
-
+*/
 void MemberSelector():
-{}
+{ debug("MemberSelector()"); }
 {
   "." TypeArguments() <IDENTIFIER>
 }

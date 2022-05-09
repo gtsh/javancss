@@ -41,6 +41,7 @@ import java.util.logging.*;
 import javancss.FunctionMetric;
 import javancss.ObjectMetric;
 import javancss.PackageMetric;
+import static java.lang.System.out;
 
 /**
  * Java source code parser based on a grammar compiled by
@@ -885,7 +886,7 @@ void CompilationUnit() :
                 _sPackage = "";
                 _pPackageMetric = new PackageMetric();      // this object manages the metrics
         }
-  [ LOOKAHEAD( ( Annotation() )* "package" ) PackageDeclaration() ]
+  [ LOOKAHEAD(Annotations() "package") PackageDeclaration() ]
   ( ImportDeclaration() )*
   ( TypeDeclaration()
     //{ System.out.println( "Token: " + getToken( 0 ) ); }
@@ -962,7 +963,7 @@ void PackageDeclaration() :
     int beginColumn = 1;
 }
 {
-    (Annotation())*
+  Annotations()
   "package"
   {
       _anonClassCount = 1;
@@ -1024,7 +1025,7 @@ void TypeDeclaration() :
    int modifiers;
 }
 {
-  LOOKAHEAD( (Annotation())* ( "abstract" | "final" | "public" | "synchronized" | "strictfp" )* "class" )
+  LOOKAHEAD( Annotations() ( "abstract" | "final" | "public" | "synchronized" | "strictfp" )* "class" )
 
 	//(Annotation())*	//Removed by REYNAUD Sebastien (LOGICA)
 
@@ -1081,7 +1082,7 @@ void ClassDeclaration() :
 	{tmpToken = myToken;}
 	)?
 
-	(Annotation())*
+	Annotations()
 	//
 
   ( "abstract"
@@ -1195,8 +1196,12 @@ void UnmodifiedClassDeclaration() :
                 _sClass += getToken(2).image;
                 _classLevel ++;
         }
-        Modifiers()
-  "class" Identifier() [TypeParameters()] [ "extends" Name() [TypeArguments()] /*Added by REYNAUD Sebastien (LOGICA)*/ ("." Name() [TypeArguments()] )* /**/ ] [ "implements" NameList() ]
+  Modifiers()
+  "class"
+  Identifier()
+  [ TypeParameters() ]
+  [ ExtendsList(false) ]
+  [ ImplementsList(false) ]
   ClassBody()
         {
                 _ncss++;
@@ -1757,43 +1762,43 @@ void MethodDeclaration() :
           tmpToken = getToken( 0 );
       }
   }
-| "default"
+    | "default"
   {
       if ( tmpToken == null ) {
           tmpToken = getToken( 0 );
       }
   }
-| "static"
+    | "static"
   {
       if ( tmpToken == null ) {
           tmpToken = getToken( 0 );
       }
   }
-| "abstract"
+    | "abstract"
   {
       if ( tmpToken == null ) {
           tmpToken = getToken( 0 );
       }
   }
-| "final"
+    | "final"
   {
       if ( tmpToken == null ) {
           tmpToken = getToken( 0 );
       }
   }
-| "native"
+    | "native"
   {
       if ( tmpToken == null ) {
           tmpToken = getToken( 0 );
       }
   }
-| "synchronized"
+    | "synchronized"
   {
       if ( tmpToken == null ) {
           tmpToken = getToken( 0 );
       }
   }
-| "strictfp"
+    | "strictfp"
   {
       if ( tmpToken == null ) {
           tmpToken = getToken( 0 );
@@ -2033,6 +2038,7 @@ void ConstructorDeclaration() :
   }
  ]
   [ TypeParameters() ]
+  Annotations()  // Target(ElementType.TYPE_USE), available since JDK 8 (gtsh)
   Identifier()
         {
             if ( tmpToken == null ) {
@@ -2171,12 +2177,15 @@ void Initializer() :
 void Type() :
 {}
 {
-   LOOKAHEAD(2) ReferenceType()
- |
+   Annotations() // Target(ElementType.TYPE_USE), available since JDK 8 (gtsh)
+   (
+     LOOKAHEAD(2) ReferenceType()
+   |
    PrimitiveType()
           {
                   _sName = getToken(0).image;
           }
+    )
 }
 /*
 ccl 2008-01-24
@@ -2269,8 +2278,8 @@ void FieldTypeNameLookahead() :
 void NameList() :
 {}
 {
-    Name() [TypeArguments()]
-   ( "," Name() [TypeArguments()]
+    Annotations() Name() [TypeArguments()]
+   ( "," Annotations() Name() [TypeArguments()]
   )*
 }
 
@@ -2286,7 +2295,7 @@ void Expression() :
   LOOKAHEAD( PrimaryExpression() AssignmentOperator() )
   //{ System.out.println( "Expression" ); }
   Assignment()
-  |
+|
   ConditionalExpression()
 }
 
@@ -2586,36 +2595,35 @@ void AllocationExpression() :
 
 }
 {
-  LOOKAHEAD(2)
-  "new" PrimitiveType() ArrayDimsAndInits()
-|
-         "new" Name()
-                        // this is all for anonymous classes
-                        { sName = _sName; }
-  [TypeArguments()]
-      (
+  "new" Annotations()
+  (
+    PrimitiveType() ArrayDimsAndInits()
+  |
+    Name()
+    { sName = _sName; } // preparation for tracking anonymous classes
+    [TypeArguments()]
+    (
       ArrayDimsAndInits()
     |
       Arguments()
-                [
-                 {
-                         if (!_sClass.equals("")) {
-                                 _sClass += ".";
-                         }
-                         /*_sClass += sName;*/
-                         _sClass += sName + "$" + _anonClassCount ;
-
-                         _classLevel ++;
-                 }
-                        ClassBody()
-                        {
-                                _classLevel--;
-                                _functions = oldFunctions;
-                                _classes = oldClasses + 1;
-                                _sClass = sOldClass;
-                        }
-                ]
+      [
+        {  // track actual ananymous class instantiation:
+            if (!_sClass.equals("")) {
+               _sClass += ".";
+            }
+            _sClass += sName + "$" + _anonClassCount ;
+            _classLevel ++;
+        }
+        ClassBody()
+        {
+            _classLevel--;
+            _functions = oldFunctions;
+            _classes = oldClasses + 1;
+            _sClass = sOldClass;
+        }
+      ]
     )
+  )
 }
 
 /*
@@ -2950,8 +2958,13 @@ void Identifier() :
 }
 
 /* Annotation syntax follows. */
-
-void Annotation():
+void Annotations() :
+{}
+{
+  (Annotation())*
+}
+  
+void Annotation() :
 {}
 {
    LOOKAHEAD( "@" Name() "(" ( <IDENTIFIER> "=" | ")" ))
@@ -3095,57 +3108,57 @@ int Modifiers():
       if ( _tmpToken == null ) {
           _tmpToken = getToken( 0 );
       }
-}
+    }
   |
    "static" { modifiers |= ModifierSet.STATIC;       if ( _tmpToken == null ) {
           _tmpToken = getToken( 0 );
       }
-}
+    }
   |
    "protected" { modifiers |= ModifierSet.PROTECTED;       if ( _tmpToken == null ) {
        _tmpToken = getToken( 0 );
       }
-}
+    }
   |
    "private" { modifiers |= ModifierSet.PRIVATE;       if ( _tmpToken == null ) {
           _tmpToken = getToken( 0 );
       }
-}
+    }
   |
    "final" { modifiers |= ModifierSet.FINAL;       if ( _tmpToken == null ) {
        _tmpToken = getToken( 0 );
       }
-}
+    }
   |
    "abstract" { modifiers |= ModifierSet.ABSTRACT;       if ( _tmpToken == null ) {
           _tmpToken = getToken( 0 );
       }
-}
+    }
   |
    "synchronized" { modifiers |= ModifierSet.SYNCHRONIZED;       if ( _tmpToken == null ) {
           _tmpToken = getToken( 0 );
       }
-}
+    }
   |
    "native" { modifiers |= ModifierSet.NATIVE;       if ( _tmpToken == null ) {
           _tmpToken = getToken( 0 );
       }
-}
+    }
   |
    "transient" { modifiers |= ModifierSet.TRANSIENT;       if ( _tmpToken == null ) {
           _tmpToken = getToken( 0 );
       }
-}
+    }
   |
    "volatile" { modifiers |= ModifierSet.VOLATILE;       if ( _tmpToken == null ) {
           _tmpToken = getToken( 0 );
       }
-}
+    }
   |
    "strictfp" { modifiers |= ModifierSet.STRICTFP;       if ( _tmpToken == null ) {
           _tmpToken = getToken( 0 );
       }
-}
+    }
   |
    Annotation()
   )
@@ -3294,12 +3307,14 @@ void EnumBody():
 void TypeParameter():
 {}
 {
+    Annotations() // Target(ElementType.TYPE_PARAMETER), available since JDK 8 (gtsh)
     <IDENTIFIER> [ TypeBound() ]
 }
 
 void ClassOrInterfaceType():
 {}
 {
+  Annotations()  // Target(ElementType.TYPE_USE), available since JDK 8 (gtsh)
   <IDENTIFIER>
 {
                 _sName = getToken(0).image;
@@ -3377,31 +3392,34 @@ void TypeArguments():
 void TypeArgument():
 {}
 {
-/* ccl 2008-01-24
-    LOOKAHEAD(2)
-    <IDENTIFIER> TypeArguments()
- |*/
-   ReferenceType()
- |
-   "?" [ WildcardBounds() ]
-
+  Annotations()
+  (
+    ReferenceType()
+  |
+    "?" [ WildcardBounds() ]
+  )
 }
 
 void ReferenceType():
 {}
 {
 /* ccl 2008-01-23 */
-   PrimitiveType() ( LOOKAHEAD(2) "[" "]" { _sName += "[]"; } )+
+   PrimitiveType() ( LOOKAHEAD(ArrayDeclaration()) ArrayDeclaration() { _sName += "[]"; } )+
   |
-   ( ClassOrInterfaceType() ) ( LOOKAHEAD(2) "[" "]" { _sName += "[]"; } )*
+   ( ClassOrInterfaceType() ) ( LOOKAHEAD(ArrayDeclaration()) ArrayDeclaration() { _sName += "[]"; } )*
+}
+
+void ArrayDeclaration():
+{}
+{
+  Annotations() "[" "]"
 }
 
 void WildcardBounds():
 {}
 {
-   "extends" ReferenceType()
- |
-   "super" ReferenceType()
+   ( "super" | "extends" )
+   ClassOrInterfaceType()
 }
 
 void FieldDeclaration15(int modifiers):

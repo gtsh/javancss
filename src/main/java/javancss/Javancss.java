@@ -46,7 +46,7 @@ import javancss.parser.JavaParserInterface;
 import javancss.parser.JavaParserTokenManager;
 import javancss.parser.TokenMgrError;
 
-import javax.swing.*;
+import javax .swing.*;
 
 /**
  * While the Java parser class might be the heart of JavaNCSS,
@@ -114,6 +114,8 @@ public class Javancss
     private void _measureSource( File sSourceFile_ )
         throws Exception, Error
     {
+        log.fine( "_measureSource(File"+ sSourceFile_.getAbsolutePath() + ").ENTER" );
+
         Reader reader;
 
         // opens the file

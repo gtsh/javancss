@@ -21,9 +21,16 @@ Boston, MA 02111-1307, USA.  */
 
 package javancss;
 
+import java.io.Serializable;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
+import java.util.*;
+import java.util.function.*;
+import org.junit.Test;
+
 public class ParseTest extends AbstractTestCase
 {
-    public void testParse()
+    public  @Test void  testParse()
     {
         checkParse( 31 ); // java.net.Socket, why?
         checkParse( 33 ); // java.text.Decimalformat, why?
@@ -59,9 +66,12 @@ public class ParseTest extends AbstractTestCase
         checkParse( 161 ); // lambda expressions
     }
 
-    private void checkParse( int testFile )
+    void checkParse( int testFile )
     {
         Javancss pJavancss = measureTestFile( testFile );
-        assertFalse( "Parsing file Test" + testFile + ".java failed!", pJavancss.getNcss() <= 0 );
+        assertFalse( "Parsing file Test" + testFile + 
+                ".java failed!; Message: " + pJavancss.getLastErrorMessage(),
+                pJavancss.getNcss() <= 0 );
     }
+    
 }

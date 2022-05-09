@@ -48,7 +48,10 @@ public class CyclomaticComplexityNumberTest extends AbstractTestCase
     public void testCyclomaticComplexityNumber72()
     {
         Javancss javancss = measureTestFile( 72 );
+        assertNotNull(javancss);
         List<FunctionMetric> metrics = javancss.getFunctionMetrics();
+        assertNotNull(metrics);
+        assertEquals(5, metrics.size());
         assertEquals( "CCN", metrics.get( 0 ).ccn, 4 );
         assertEquals( "CCN", metrics.get( 1 ).ccn, 5 );
         assertEquals( "CCN", metrics.get( 2 ).ccn, 4 );

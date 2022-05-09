@@ -24,24 +24,40 @@ package javancss;
 import org.apache.commons.io.output.NullOutputStream;
 
 import java.io.PrintStream;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ParseDebugTest extends ParseTest
 {
+    PrintStream stdout = System.out;
+    PrintStream stderr = System.err;
+    
+    public void setUp() {
+        logger.setLevel( Level.ALL );
+
+        ConsoleHandler ch = new ConsoleHandler()
+        {
+            {
+                this.setOutputStream(System.out);
+            }
+        };
+        ch.setLevel(Level.ALL);
+        logger.addHandler(ch);
+        
+    }
+    
     @Override
     protected Javancss measureTestFile( int testFileId )
     {
-        Logger logger = Logger.getLogger( "javancss" );
-        logger.setLevel( Level.FINEST );
         
         PrintStream stdout = System.out;
         PrintStream stderr = System.err;
 
         try
         {
-            System.setOut( new PrintStream( new NullOutputStream() ) );
-            System.setErr( new PrintStream( new NullOutputStream() ) );
+            //System.setOut( new PrintStream( new NullOutputStream() ) );
+            //System.setErr( new PrintStream( new NullOutputStream() ) );
             
             return super.measureTestFile( testFileId );
         }
@@ -52,4 +68,9 @@ public class ParseDebugTest extends ParseTest
             System.setErr( stderr );
         }
     }
+
+    public void test161() {
+       checkParse( 161 ); // lambda expressions
+    }
+    
 }

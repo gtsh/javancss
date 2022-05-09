@@ -23,6 +23,7 @@ package javancss;
 import junit.framework.TestCase;
 
 import java.io.File;
+import java.util.logging.Logger;
 
 /**
  * Base JavaNCSS unit-tests class.
@@ -33,6 +34,7 @@ import java.io.File;
 public abstract class AbstractTestCase extends TestCase
 {
     private File testDir = new File( "target/test-classes/" );
+    Logger logger = Logger.getLogger(Javancss.class.getName());
 
     public File getTestDir()
     {
@@ -51,6 +53,7 @@ public abstract class AbstractTestCase extends TestCase
 
     protected Javancss measureTestFile( int testFileId )
     {
+        logger.config("Start test " + testFileId);
         return new Javancss( getTestFile( testFileId ) );
     }
 }
